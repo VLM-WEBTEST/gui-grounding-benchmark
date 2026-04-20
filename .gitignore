@@ -25,6 +25,3 @@ checkpoints/
 
 # Ad-hoc smoke tests (not committed)
 smoke_*.py
-
-# Claude Code context (not committed)
-CLAUDE.md
