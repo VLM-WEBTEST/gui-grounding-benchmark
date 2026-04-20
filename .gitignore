@@ -1,0 +1,30 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+*.egg-info/
+
+# Results (raw predictions kept for reproducibility, but adapter can skip)
+results/errors.log
+results/raw/*.jsonl
+
+# Model cache
+.cache/
+/models/
+
+# Checkpoints
+checkpoints/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Ad-hoc smoke tests (not committed)
+smoke_*.py
+
+# Claude Code context (not committed)
+CLAUDE.md
