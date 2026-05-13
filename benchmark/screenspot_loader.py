@@ -1,10 +1,12 @@
 """
-Loader for the ScreenSpot benchmark (Cheng et al., ACL 2024).
+Loader for ScreenSpot-V2 (Cheng et al., updated for OS-Atlas; lmms-lab/ScreenSpot-v2).
 
-Source: https://github.com/njucckevin/SeeClick
-HuggingFace mirror: rootsautomation/ScreenSpot (https://huggingface.co/datasets/rootsautomation/ScreenSpot)
+V2 differences vs V1 (rootsautomation/ScreenSpot):
+  - bbox format is [x, y, w, h] in *pixels* (V1 was [x1, y1, x2, y2] normalized)
+  - single split named "train" (V1 used "test")
+  - 1272 total samples; web subset (file_name prefix "web_") = 437
 
-We use only the web subset, split into "text" and "icon" types.
+We benchmark only the web subset, split into "text" and "icon" types.
 """
 
 from dataclasses import dataclass
@@ -18,41 +20,36 @@ DataType = Literal["text", "icon"]
 
 @dataclass
 class ScreenSpotSample:
-    image: Image.Image           # PIL RGB
-    instruction: str             # natural-language target
-    bbox: Tuple[float, float, float, float]  # (x_min, y_min, x_max, y_max), normalized [0, 1]
-    data_type: DataType          # "text" or "icon"
+    image: Image.Image                            # PIL RGB
+    instruction: str                              # natural-language target
+    bbox: Tuple[float, float, float, float]       # (x1, y1, x2, y2), normalized [0, 1]
+    data_type: DataType                           # "text" or "icon"
 
 
 class ScreenSpotWeb:
-    """ScreenSpot web subset, normalized bboxes, lazy PIL images."""
+    """ScreenSpot-V2 web subset, normalized bboxes, lazy PIL images."""
 
-    HF_REPO = "rootsautomation/ScreenSpot"
+    HF_REPO = "lmms-lab/ScreenSpot-v2"
 
-    def __init__(self, split: str = "test"):
+    def __init__(self, split: str = "train"):
         raw = load_dataset(self.HF_REPO, split=split)
-        # ScreenSpot stores platform in "file_name" or a dedicated "platform" column;
-        # HF mirrors vary. Filter to the web platform:
-        filtered = [row for row in raw if self._is_web(row)]
-        self._rows = filtered
+        self._rows = [row for row in raw if self._is_web(row)]
 
     @staticmethod
     def _is_web(row) -> bool:
-        # Different mirrors use different field names. Try common candidates.
-        for key in ("platform", "data_source", "source"):
-            if key in row and str(row[key]).lower().startswith("web"):
-                return True
-        # Fall back: filename prefix "web_"
-        for key in ("file_name", "image_file"):
-            if key in row and str(row[key]).lower().startswith("web"):
-                return True
-        return False
+        fn = row.get("img_filename") or row.get("file_name") or ""
+        return str(fn).lower().startswith("web_")
 
     @staticmethod
-    def _normalize_bbox(bbox) -> Tuple[float, float, float, float]:
-        """rootsautomation/ScreenSpot bboxes are already (x1, y1, x2, y2) normalized to [0, 1]."""
-        x1, y1, x2, y2 = bbox
-        return (float(x1), float(y1), float(x2), float(y2))
+    def _normalize_bbox(bbox_xywh, img_w: int, img_h: int) -> Tuple[float, float, float, float]:
+        """V2 bbox is [x, y, w, h] in pixels. Convert to (x1, y1, x2, y2) normalized [0, 1]."""
+        x, y, w, h = bbox_xywh
+        return (
+            float(x) / img_w,
+            float(y) / img_h,
+            float(x + w) / img_w,
+            float(y + h) / img_h,
+        )
 
     def __len__(self) -> int:
         return len(self._rows)
@@ -66,7 +63,7 @@ class ScreenSpotWeb:
 
     def _to_sample(self, row) -> ScreenSpotSample:
         image: Image.Image = row["image"].convert("RGB")
-        bbox = self._normalize_bbox(row["bbox"])
+        bbox = self._normalize_bbox(row["bbox"], image.width, image.height)
         data_type = row.get("data_type", "text")
         if data_type not in ("text", "icon"):
             data_type = "icon"

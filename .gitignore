@@ -1,27 +1,39 @@
+# Python
 __pycache__/
 *.pyc
+*.egg-info/
+.pytest_cache/
+
+# Venv
 .venv/
 venv/
+
+# Secrets
 .env
-*.egg-info/
 
-# Results (raw predictions kept for reproducibility, but adapter can skip)
-results/errors.log
-results/raw/*.jsonl
+# Logs (not actual results)
+*.log
 
-# Model cache
+# Model cache / checkpoints
 .cache/
 /models/
-
-# Checkpoints
 checkpoints/
 
-# macOS
+# OS
 .DS_Store
 
 # IDE
 .vscode/
 .idea/
 
-# Ad-hoc smoke tests (not committed)
+# Per-sample raw predictions (большие, регенерируются)
+results/raw/*.jsonl
+results/webclick_raw/*.jsonl
+results/khabner_raw/*.jsonl
+results/khabner_raw_ec637966/*.jsonl
+
+# Diagnostic outputs (генерируются по запросу)
+results/diag/
+
+# Ad-hoc smoke tests, eval logs
 smoke_*.py

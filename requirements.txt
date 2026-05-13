@@ -1,29 +1,27 @@
-# Core
+# Core ML
 torch>=2.0
-transformers==4.46.3
+transformers==4.46.3       # 4.52+ ломает Florence-2 (DaViT)
 datasets>=2.14
 Pillow>=10.0
 numpy>=1.24
 tqdm>=4.65
+peft>=0.11                 # LoRA inference для Florence
 
-# Adapters for OURS
-peft>=0.11
+# Florence-2 hard deps
+timm==0.9.16               # 1.0+ ломает DaViT
+einops>=0.7
+
+# SeeClick / Qwen-VL (1st gen)
+tiktoken>=0.7
+transformers_stream_generator>=0.0.4
 
 # API models
-openai>=1.0
-anthropic>=0.40
+openai>=1.0                # GPT-4o + Gemini (через VSellm proxy)
+anthropic>=0.40            # Claude
 python-dotenv>=1.0
 
 # Plot
 matplotlib>=3.7
 
-# Florence-2 hard deps
-timm==0.9.16
-einops>=0.7
-
 # Tests
 pytest>=7.4
-
-# Optional: 4-bit quantization for large GUI specialists
-# bitsandbytes>=0.43
-# accelerate>=0.30

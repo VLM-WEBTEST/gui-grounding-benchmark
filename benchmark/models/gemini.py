@@ -1,15 +1,10 @@
 """
-GPT-4o adapter.
+Gemini 2.5 Pro adapter (via VSellm OpenAI-compatible proxy).
 
-Prompt template adapted from the ScreenSpot-Pro GUI grounding baseline:
-    https://github.com/likaixin2000/ScreenSpot-Pro-GUI-Grounding
+Same prompt template as GPT-4o for direct comparison. Uses the OpenAI SDK with
+`base_url=https://api.vsellm.ru/v1` and model id `google/gemini-2.5-pro`.
 
-Asks the model for pixel coordinates given a screenshot and a target
-instruction, and parses the first "(x, y)" tuple from the response.
-If the returned coords look normalized (both ≤ 1) they are used as-is;
-otherwise they are divided by the image width/height.
-
-Requires env var OPENAI_API_KEY.
+Requires env var OPENAI_API_KEY (proxy supports both OpenAI and Google routes).
 """
 
 import base64
@@ -23,35 +18,13 @@ from PIL import Image
 
 from .base import Category, GUIGroundingModel
 
-MODEL = "gpt-4o"
-
-# OpenAI / Anthropic both downscale images larger than ~1500–2000px on the long
-# side before passing to the vision encoder. If we send a 2560x1440 screenshot
-# but tell the model "image size 2560x1440", it reasons in the *downscaled*
-# coordinate frame and returns coords there — which we then incorrectly
-# de-normalize by the original dimensions, biasing all predictions toward the
-# top-left. We pre-resize on our side and report the post-resize size, so the
-# model and our parser agree on the same coordinate frame.
-MAX_LONG_SIDE = 1568
+MODEL = "google/gemini-2.5-pro"
 
 PROMPT_TEMPLATE = (
     'In this UI screenshot, what are the pixel coordinates (x, y) of the '
     'element corresponding to the following instruction: "{instruction}". '
     'Image size: {w}x{h}. Answer with only (x, y).'
 )
-
-
-def _resize_for_api(image: Image.Image) -> Image.Image:
-    w, h = image.size
-    if max(w, h) <= MAX_LONG_SIDE:
-        return image
-    if w >= h:
-        new_w = MAX_LONG_SIDE
-        new_h = round(h * MAX_LONG_SIDE / w)
-    else:
-        new_h = MAX_LONG_SIDE
-        new_w = round(w * MAX_LONG_SIDE / h)
-    return image.resize((new_w, new_h), Image.LANCZOS)
 
 
 def _encode_png_data_url(image: Image.Image) -> str:
@@ -66,39 +39,46 @@ def _parse_xy(text: str, w: int, h: int) -> Optional[Tuple[float, float]]:
     if not m:
         return None
     x, y = float(m.group(1)), float(m.group(2))
+    # Already in [0, 1].
     if x <= 1.0 and y <= 1.0:
-        # Already normalized.
         return (x, y)
+    # Gemini natively uses 0-1000 normalized coordinates (per Google docs:
+    # "coordinates relative to image dimensions, scale to [0, 1000]"). Even
+    # when prompted for pixel coordinates, it often returns 0-1000. We treat
+    # any value ≤ 1000 as 0-1000 normalized; only fall back to pixels when
+    # coords clearly exceed 1000 (which indicates true pixel output).
+    if x <= 1000 and y <= 1000:
+        return (x / 1000, y / 1000)
     return (x / w, y / h)
 
 
-class GPT4o(GUIGroundingModel):
-    name = "GPT-4o"
+class Gemini(GUIGroundingModel):
+    name = "Gemini 2.5 Pro"
     category: Category = "closed_api"
     params = "N/A"
-    cost_per_1k = "$2.50-10.00"
+    cost_per_1k = "$1.25-10.00"
 
     def __init__(self):
         api_key = os.environ.get("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("GPT4o: set OPENAI_API_KEY env var.")
-        self._client = OpenAI(api_key=api_key)
+            raise ValueError("Gemini: set OPENAI_API_KEY env var.")
+        base_url = os.environ.get("OPENAI_BASE_URL")
+        self._client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
 
     def predict(
         self, image: Image.Image, instruction: str
     ) -> Optional[Tuple[float, float]]:
         if image.mode != "RGB":
             image = image.convert("RGB")
-        # Note: empirically, pre-resizing does NOT help GPT-4o (verified on
-        # 100 WebClick samples: 4/100 native vs 5/100 resized — within noise).
-        # OpenAI tiles large images rather than uniformly downscaling, so the
-        # downscaling artifact that hurts Claude doesn't apply here.
         w, h = image.size
 
         resp = self._client.chat.completions.create(
             model=MODEL,
             temperature=0.0,
-            max_tokens=40,
+            # Gemini 2.5 Pro reserves at least 128 tokens for internal "thinking"
+            # so max_tokens must be >= ~256 (proxy derives thinking budget as
+            # half of max_tokens). Visible output is short ("(x, y)").
+            max_tokens=512,
             messages=[
                 {
                     "role": "user",

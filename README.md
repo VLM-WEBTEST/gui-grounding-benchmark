@@ -1,82 +1,123 @@
 # GUI Grounding Benchmark
 
-Reproducible evaluation of GUI grounding models on ScreenSpot-Web (Cheng et al., ACL 2024).
+Воспроизводимое сравнение визуально-языковых моделей (VLM) на задаче локализации UI-элементов веб-страниц по текстовой инструкции. Постановка соответствует ClickAcc-протоколу из SeeClick (Cheng et al., ACL 2024).
 
-Compares 9 models across 4 categories on the standard **ClickAcc** metric (predicted click inside ground-truth bbox).
+Сопоставляет 11 моделей в 4 категориях на трёх независимых бенчмарках.
 
-## Models
+## Бенчмарки
 
-| Category | Model | Params |
+| Бенчмарк | Источник | Размер | Назначение |
+|---|---|---|---|
+| **ScreenSpot-V2** | `lmms-lab/ScreenSpot-v2` | 437 web (1272 full) | Стандартное сравнение с literature |
+| **WebClick** | `Hcompany/WebClick` | 1639 (3 bucket'а) | Independent web-grounding бенчмарк |
+| **Khabner test** | `Khabner/moondream-data` | 2183 (10 element types) | In-domain held-out (production-style UI) |
+
+## Сравниваемые модели
+
+| Категория | Модель | Параметры |
 |---|---|---|
-| Closed API | GPT-4o | N/A |
-| Closed API | Claude 3.5 Sonnet | N/A |
-| Open generalist | Qwen2-VL-7B | 7B |
-| Open generalist | Moondream2 (base) | 1.86B |
-| Open generalist | Florence-2 (base) | 270M |
-| Open GUI-specialist | SeeClick | 9.6B |
-| Open GUI-specialist | OS-Atlas-Base-7B | 7B |
-| **Ours** | **Moondream2 + LoRA** | **1.86B** |
-| **Ours** | **Florence-2 + LoRA** | **270M** |
+| Closed API | GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Pro | – |
+| Open generalist | Qwen2-VL-7B, Moondream2, Florence-2-base | 0.27–7B |
+| Open GUI-specialist | OS-Atlas-Base-7B, SeeClick | 7–9.6B |
+| **Ours (LoRA)** | **Moondream2 + LoRA, Florence-2-base + LoRA, Florence-2-large + LoRA** | **270M, 770M, 1.86B** |
 
 ## Setup
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# edit .env with your keys and checkpoint paths
+# edit .env с API-ключами и путями к LoRA-чекпоинтам
 ```
 
-## Usage
+## Запуск
 
 ```bash
-# All models
-python -m benchmark.run_benchmark --models all
+# ScreenSpot-V2 (web subset из 437 сэмплов)
+python -m benchmark.run_benchmark --models all --concurrency 8
 
-# Specific models
-python -m benchmark.run_benchmark --models moondream2_lora florence2_lora
+# WebClick (1639 сэмплов, 3 bucket'а)
+python eval_webclick.py --model all --concurrency 8
 
-# Resume (skip models with existing raw predictions)
-python -m benchmark.run_benchmark --resume
+# Khabner test (in-domain, 2183 сэмплов, стратификация по element_type)
+python eval_khabner.py --model all --concurrency 8
 
-# Smoke test
-python -m benchmark.run_benchmark --models moondream2_base --max-samples 10
+# Resume (пропустить модели у которых уже есть jsonl)
+python -m benchmark.run_benchmark --models all --resume
 
-# Build plot after benchmark
-python -m benchmark.plot_results
+# Quick smoke (10 сэмплов одной моделью)
+python -m benchmark.run_benchmark --models moondream2_lora --max-samples 10
+
+# Concurrency=N — для API моделей (8 параллельных запросов ~7× ускоряет)
+# Concurrency=1 — обязательно для GPU моделей (память не делится между потоками)
 ```
 
-## Outputs
+## Структура результатов
 
 ```
 results/
-├── raw/{model}.jsonl         # per-sample predictions (for reproducibility)
-├── benchmark_table.md        # for paper
-├── benchmark_table.csv
-├── benchmark_plot.svg        # for poster
-└── errors.log
+├── raw/{model}.jsonl              # per-sample predictions ScreenSpot-V2
+├── webclick_raw/{model}.jsonl     # per-sample WebClick
+├── khabner_raw/{model}.jsonl      # per-sample Khabner test
+├── benchmark_table.{md,csv}       # сводная таблица V2
+├── webclick_table.{md,csv}        # сводная WebClick
+└── khabner_table.{md,csv}         # сводная Khabner
 ```
 
-## Metric: ClickAcc
+Каждая jsonl-строка: `{idx, instruction, pred: [x, y] | null, gt_bbox, ...meta..., latency_s}`
 
-A prediction is correct iff the predicted point (x, y) falls inside the ground-truth bounding box.
+## Метрика — ClickAcc
 
-Reported separately for:
-- **Text** elements (menu items, buttons with text labels)
-- **Icon/Widget** elements (icons, widgets without text)
-- **Overall** (combined)
+Предсказание считается корректным, если предсказанная точка `(x, y)` лежит внутри ground-truth bbox `[x_min, y_min, x_max, y_max]` в нормализованных координатах `[0, 1]`.
 
-Reference: Cheng et al., "SeeClick: Harnessing GUI Grounding for Advanced Visual GUI Agents", ACL 2024.
+Стратификация:
+- ScreenSpot-V2: `text` / `icon`, по платформам (web/mobile/desktop), по `data_source` (8 категорий)
+- WebClick: `agentbrowse` / `humanbrowse` / `calendars`
+- Khabner test: `element_type` (button / input / link / checkbox / heading / menu_item / ...), `site_name` (40 типов сайтов)
 
-## Tests
+Failed predictions (None) считаются как miss.
+
+## Воспроизводимость
+
+- Seed=0 (numpy, torch, random)
+- Per-sample raw jsonl → метрики пересчитываются без повторной инференции (`--resume`)
+- Промпты для каждой модели в адаптерах (`benchmark/models/*.py`), процитированы в docstring со ссылкой на источник
+- `transformers==4.46.3` (Florence-2 ломается на 4.52+)
+
+## Тесты парсеров
 
 ```bash
 pytest benchmark/parsing/tests/
 ```
 
-## Reproducibility
+## Адаптеры моделей
 
-- Seed fixed at 0 (numpy, torch, random)
-- Raw predictions saved per sample → re-run metrics without inference
-- Pinned dependency versions
-- Per-model prompts copied verbatim from primary sources (cited in each adapter's docstring)
+Каждая модель в `benchmark/models/{model_key}.py` имеет:
+- `predict(image, instruction) → (x, y) | None` — единый интерфейс
+- Docstring с цитатой prompt-template'а из первоисточника (paper / official repo)
+- Обработку специфики модели (image resize для Claude, max_pixels для Qwen2-VL, и т.д.)
+
+## Структура проекта
+
+```
+benchmark/
+├── run_benchmark.py            # orchestrator для ScreenSpot-V2
+├── plot_results.py             # генерация benchmark_plot.png
+├── screenspot_loader.py        # ScreenSpot-V2 dataset loader
+├── webclick_loader.py          # WebClick loader
+├── khabner_loader.py           # Khabner test loader
+├── models/                     # адаптеры (один файл на модель)
+├── metrics/click_accuracy.py   # ClickAcc реализация
+└── parsing/coordinate_parsers.py  # парсеры координат разных моделей
+eval_webclick.py                # orchestrator для WebClick (с concurrency)
+eval_khabner.py                 # orchestrator для Khabner test
+SBAS_Khabner_results.md         # сводный документ с результатами для постера
+```
+
+## Ссылки
+
+- SeeClick paper (ScreenSpot V1): [arXiv:2401.10935](https://arxiv.org/abs/2401.10935)
+- ScreenSpot-V2 dataset: [lmms-lab/ScreenSpot-v2](https://huggingface.co/datasets/lmms-lab/ScreenSpot-v2)
+- WebClick dataset: [Hcompany/WebClick](https://huggingface.co/datasets/Hcompany/WebClick)
+- Training dataset: [Khabner/moondream-data](https://huggingface.co/datasets/Khabner/moondream-data)
+- LoRA paper: [arXiv:2106.09685](https://arxiv.org/abs/2106.09685)
