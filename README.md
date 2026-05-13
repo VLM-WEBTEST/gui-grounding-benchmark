@@ -111,7 +111,6 @@ benchmark/
 └── parsing/coordinate_parsers.py  # парсеры координат разных моделей
 eval_webclick.py                # orchestrator для WebClick (с concurrency)
 eval_khabner.py                 # orchestrator для Khabner test
-SBAS_Khabner_results.md         # сводный документ с результатами для постера
 ```
 
 ## Ссылки
