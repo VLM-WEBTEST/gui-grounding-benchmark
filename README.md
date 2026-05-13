@@ -17,9 +17,9 @@
 | Категория | Модель | Параметры |
 |---|---|---|
 | Closed API | GPT-4o, Claude Sonnet 4.6, Gemini 2.5 Pro | – |
-| Open generalist | Qwen2-VL-7B, Moondream2, Florence-2-base | 0.27–7B |
+| Open generalist | Qwen2-VL-7B, Moondream2, Florence-2-base | 0.23–7B |
 | Open GUI-specialist | OS-Atlas-Base-7B, SeeClick | 7–9.6B |
-| **Ours (LoRA)** | **Moondream2 + LoRA, Florence-2-base + LoRA, Florence-2-large + LoRA** | **270M, 770M, 1.86B** |
+| **Ours (LoRA)** | **Moondream2 + LoRA, Florence-2-base + LoRA, Florence-2-large + LoRA** | **1.86B, 232M, 770M** |
 
 ## Setup
 
@@ -120,3 +120,7 @@ eval_khabner.py                 # orchestrator для Khabner test
 - WebClick dataset: [Hcompany/WebClick](https://huggingface.co/datasets/Hcompany/WebClick)
 - Training dataset: [Khabner/moondream-data](https://huggingface.co/datasets/Khabner/moondream-data)
 - LoRA paper: [arXiv:2106.09685](https://arxiv.org/abs/2106.09685)
+
+## Лицензия
+
+[MIT](LICENSE)
