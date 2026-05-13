@@ -14,7 +14,7 @@ ScreenSpot / ScreenSpot-V2 (different sources, different annotation methodology)
 """
 
 from dataclasses import dataclass
-from typing import Iterator, List, Tuple
+from typing import Iterator, Tuple
 
 from datasets import load_dataset
 from PIL import Image
@@ -54,12 +54,3 @@ class WebClick:
             bbox=bbox,
             bucket=str(row.get("bucket", "unknown")),
         )
-
-    def to_lists(self):
-        imgs, instrs, bboxes, buckets = [], [], [], []
-        for s in self:
-            imgs.append(s.image)
-            instrs.append(s.instruction)
-            bboxes.append(s.bbox)
-            buckets.append(s.bucket)
-        return imgs, instrs, bboxes, buckets

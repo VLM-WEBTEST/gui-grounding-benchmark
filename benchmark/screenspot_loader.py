@@ -10,7 +10,7 @@ We benchmark only the web subset, split into "text" and "icon" types.
 """
 
 from dataclasses import dataclass
-from typing import Iterator, List, Literal, Tuple
+from typing import Iterator, Literal, Tuple
 
 from datasets import load_dataset
 from PIL import Image
@@ -73,13 +73,3 @@ class ScreenSpotWeb:
             bbox=bbox,
             data_type=data_type,
         )
-
-    def to_lists(self) -> Tuple[List[Image.Image], List[str], List[tuple], List[str]]:
-        """Materialize all samples into parallel lists. Use for small datasets only."""
-        images, instructions, bboxes, types = [], [], [], []
-        for s in self:
-            images.append(s.image)
-            instructions.append(s.instruction)
-            bboxes.append(s.bbox)
-            types.append(s.data_type)
-        return images, instructions, bboxes, types

@@ -11,6 +11,7 @@ import re
 from typing import Optional, Tuple
 
 Point = Optional[Tuple[float, float]]
+PixelSize = Optional[int]
 
 
 def parse_moondream_loc_tokens(text: str) -> Point:
@@ -37,7 +38,7 @@ def parse_florence_loc_tokens(text: str, take: str = "first") -> Point:
     return None
 
 
-def parse_json_point(text: str, image_w: int = None, image_h: int = None) -> Point:
+def parse_json_point(text: str, image_w: PixelSize = None, image_h: PixelSize = None) -> Point:
     """Parse '{"x": 0.5, "y": 0.3}' or '{"x": 960, "y": 540}' (pixels).
 
     If x or y > 1.0 and image dims given, normalize by dividing by image dims.
@@ -76,7 +77,7 @@ def parse_seeclick_output(text: str) -> Point:
     return None
 
 
-def parse_qwen2_vl_output(text: str, image_w: int = None, image_h: int = None) -> Point:
+def parse_qwen2_vl_output(text: str, image_w: PixelSize = None, image_h: PixelSize = None) -> Point:
     """Qwen2-VL: '<|box_start|>(x1,y1),(x2,y2)<|box_end|>' or plain bbox.
 
     Returns box center in normalized coords.

@@ -25,33 +25,11 @@ from .base import Category, GUIGroundingModel
 
 MODEL = "gpt-4o"
 
-# OpenAI / Anthropic both downscale images larger than ~1500–2000px on the long
-# side before passing to the vision encoder. If we send a 2560x1440 screenshot
-# but tell the model "image size 2560x1440", it reasons in the *downscaled*
-# coordinate frame and returns coords there — which we then incorrectly
-# de-normalize by the original dimensions, biasing all predictions toward the
-# top-left. We pre-resize on our side and report the post-resize size, so the
-# model and our parser agree on the same coordinate frame.
-MAX_LONG_SIDE = 1568
-
 PROMPT_TEMPLATE = (
     'In this UI screenshot, what are the pixel coordinates (x, y) of the '
     'element corresponding to the following instruction: "{instruction}". '
     'Image size: {w}x{h}. Answer with only (x, y).'
 )
-
-
-def _resize_for_api(image: Image.Image) -> Image.Image:
-    w, h = image.size
-    if max(w, h) <= MAX_LONG_SIDE:
-        return image
-    if w >= h:
-        new_w = MAX_LONG_SIDE
-        new_h = round(h * MAX_LONG_SIDE / w)
-    else:
-        new_h = MAX_LONG_SIDE
-        new_w = round(w * MAX_LONG_SIDE / h)
-    return image.resize((new_w, new_h), Image.LANCZOS)
 
 
 def _encode_png_data_url(image: Image.Image) -> str:

@@ -5,7 +5,7 @@ Each model adapter implements predict() returning a normalized click point.
 """
 
 from abc import ABC, abstractmethod
-from typing import Literal, Tuple
+from typing import Literal, Optional, Tuple
 
 from PIL import Image
 
@@ -16,8 +16,11 @@ class GUIGroundingModel(ABC):
     """Base class for any model that localizes a UI element on a screenshot."""
 
     @abstractmethod
-    def predict(self, image: Image.Image, instruction: str) -> Tuple[float, float]:
-        """Return predicted click point (x, y) in normalized [0, 1] coordinates."""
+    def predict(
+        self, image: Image.Image, instruction: str
+    ) -> Optional[Tuple[float, float]]:
+        """Return predicted click point (x, y) in normalized [0, 1] coordinates,
+        or None if the model failed to produce a valid prediction."""
         ...
 
     @property
@@ -34,7 +37,7 @@ class GUIGroundingModel(ABC):
 
     @property
     def params(self) -> str:
-        """Parameter count as a string (e.g. '7B', '270M', 'N/A' for API)."""
+        """Parameter count as a string (e.g. '7B', '232M', 'N/A' for API)."""
         return "N/A"
 
     @property

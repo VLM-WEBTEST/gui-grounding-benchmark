@@ -40,7 +40,7 @@ def _pick_device() -> str:
 class Florence2LoRA(GUIGroundingModel):
     name = "Florence-2 + LoRA (ours)"
     category: Category = "ours"
-    params = "270M"
+    params = "232M"
 
     def __init__(self, adapter_path: Optional[str] = None):
         path = adapter_path or os.environ.get("FLORENCE_LORA_PATH")

@@ -38,7 +38,7 @@ def _pick_device() -> str:
 class Florence2Base(GUIGroundingModel):
     name = "Florence-2 (base)"
     category: Category = "open_generalist"
-    params = "270M"
+    params = "232M"
 
     def __init__(self):
         self._device = _pick_device()

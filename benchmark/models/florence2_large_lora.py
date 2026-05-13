@@ -2,7 +2,7 @@
 Florence-2 large + our LoRA adapter for GUI grounding.
 
 Same architecture and prompt as florence2_lora.py, but using
-microsoft/Florence-2-large-ft as the base (770M params vs 270M for base-ft).
+microsoft/Florence-2-large-ft as the base (770M params vs 232M for base-ft).
 
 Checkpoint path via env var FLORENCE_LARGE_LORA_PATH.
 """

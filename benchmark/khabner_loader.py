@@ -25,7 +25,7 @@ Schema:
 """
 
 from dataclasses import dataclass
-from typing import Iterator, List, Tuple
+from typing import Iterator, Optional, Tuple
 
 from datasets import load_dataset
 from PIL import Image
@@ -48,7 +48,7 @@ class KhabnerWebTest:
     # test split is in-domain held-out for those LoRAs.
     REVISION = "ec637966"
 
-    def __init__(self, split: str = "test", revision: str = None):
+    def __init__(self, split: str = "test", revision: Optional[str] = None):
         rev = revision or self.REVISION
         self._rows = list(load_dataset(self.HF_REPO, split=split, revision=rev))
 
@@ -80,13 +80,3 @@ class KhabnerWebTest:
             site_name=str(row.get("site_name", "unknown")),
             viewport=str(row.get("viewport", "unknown")),
         )
-
-    def to_lists(self):
-        imgs, instrs, bboxes, types, sites = [], [], [], [], []
-        for s in self:
-            imgs.append(s.image)
-            instrs.append(s.instruction)
-            bboxes.append(s.bbox)
-            types.append(s.element_type)
-            sites.append(s.site_name)
-        return imgs, instrs, bboxes, types, sites
